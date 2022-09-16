@@ -62,6 +62,20 @@ private fun ToppingsList(
     onEditPizza: (Pizza) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var toppingBeingAdded by rememberSaveable { mutableStateOf<Topping?>(null) }
+
+    toppingBeingAdded?.let { topping ->
+        ToppingPlacementDialog(
+            topping = topping,
+            onSetToppingPlacement = { placement ->
+                onEditPizza(pizza.withTopping(topping, placement))
+            },
+            onDismissRequest = {
+                toppingBeingAdded = null
+            }
+        )
+    } ?: Log.d("PizzaBuilderScreen", "Topping being added is null")
+
     // Basically a recyclerview
     LazyColumn(
         modifier = modifier
@@ -72,17 +86,8 @@ private fun ToppingsList(
                 topping = topping,
                 placement = pizza.toppings[topping],
                 onClickTopping = {
-                    val isOnPizza = pizza.toppings[topping] != null
-                    onEditPizza(
-                        pizza.withTopping( // returns an updated map of pizza
-                            topping = topping,
-                            placement = if (isOnPizza) {
-                                null
-                            } else {
-                                ToppingPlacement.All
-                            }
-                        )
-                    )
+                    // Ask user where they want their topping
+                    toppingBeingAdded = topping
                 }
             )
         }
