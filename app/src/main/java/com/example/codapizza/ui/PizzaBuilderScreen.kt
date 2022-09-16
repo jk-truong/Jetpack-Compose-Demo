@@ -1,5 +1,6 @@
 package com.example.codapizza.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -7,7 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Button
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -17,6 +19,8 @@ import com.example.codapizza.model.ToppingPlacement
 import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
+import com.example.codapizza.model.Pizza
+import java.text.NumberFormat
 
 // 'Screen' is convention for indicating that it fills the entire viewport.
 @Preview
@@ -24,11 +28,18 @@ import androidx.compose.ui.unit.dp
 fun PizzaBuilderScreen(
     modifier: Modifier = Modifier
 ) {
+    // Mutable state notifies Compose of changes and updates UI. Remember saves the state when
+    // composable is redrawn. Saveable saves to instance state, so it survives process death and
+    // activity recreation.
+    var pizza by rememberSaveable { mutableStateOf(Pizza()) }
+
     Column(
         modifier = modifier
     ) {
         // The list of all toppings, make it fill the whole screen
         ToppingsList(
+            pizza = pizza,
+            onEditPizza = { pizza = it }, // Update the pizza var
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, fill = true)
@@ -36,6 +47,7 @@ fun PizzaBuilderScreen(
 
         // Order button at the bottom of the column
         OrderButton(
+            pizza = pizza,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -46,18 +58,31 @@ fun PizzaBuilderScreen(
 
 @Composable
 private fun ToppingsList(
+    pizza: Pizza,
+    onEditPizza: (Pizza) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Basically a recyclerview
     LazyColumn(
         modifier = modifier
     ) {
+        // For each item, create a topping cell
         items(Topping.values()) { topping ->
             ToppingCell(
                 topping = topping,
-                placement = ToppingPlacement.Left,
+                placement = pizza.toppings[topping],
                 onClickTopping = {
-                    // TODO
+                    val isOnPizza = pizza.toppings[topping] != null
+                    onEditPizza(
+                        pizza.withTopping( // returns an updated map of pizza
+                            topping = topping,
+                            placement = if (isOnPizza) {
+                                null
+                            } else {
+                                ToppingPlacement.All
+                            }
+                        )
+                    )
                 }
             )
         }
@@ -66,6 +91,7 @@ private fun ToppingsList(
 
 @Composable
 private fun OrderButton(
+    pizza: Pizza,
     modifier: Modifier = Modifier
 ) {
     Button(
@@ -74,8 +100,10 @@ private fun OrderButton(
             // TODO
         }
     ) {
+        val currencyFormatter = remember { NumberFormat.getCurrencyInstance() }
+        val price = currencyFormatter.format(pizza.price)
         Text(
-            text = stringResource(R.string.place_order_button)
+            text = stringResource(R.string.place_order_button, price)
                 .toUpperCase(Locale.current)
         )
     }
